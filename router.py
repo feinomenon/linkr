@@ -1,8 +1,12 @@
 from flask import Flask, g, redirect, render_template, request, url_for
+
 from create_db import connect_db, init_db
+
 from contextlib import closing
 import random
 import sqlite3
+from urllib2 import Request, urlopen, URLError
+from urlparse import urlparse
 
 # TODO: move config to separate file
 app = Flask(__name__)
@@ -33,8 +37,6 @@ def retrieve_url(new_url, db):
     return result
 
 def store_url(orig_url, short_url, db):
-    # TODO: This will take an actual db
-    # db[short_url] = orig_url
     db.cursor().execute("INSERT INTO urlmap VALUES (?, ?)",
                         (short_url, orig_url))
     db.commit()
@@ -42,6 +44,17 @@ def store_url(orig_url, short_url, db):
 def transform(length=10):
     return ''.join(random.choice('abcdefghijklmnopqrstuvwxyz')
         for _ in range(length))
+
+def is_valid(url):
+    try:
+        urlopen(url)
+        return True
+    except URLError, e:
+        if hasattr(e, 'reason'):
+            print("Failed to reach a server:", e.reason)
+        elif hasattr(e, 'code'):
+            print("Error code:", e.code)
+        return False
 
 @app.route('/')
 def home():
@@ -55,12 +68,16 @@ def retrieve(short_url):
 @app.route('/forms', methods=['POST'])
 def process_form():
     orig_url = request.form['url']
-    if not orig_url.startswith('http'):
+    # Make sure URL has header
+    header = urlparse(orig_url).scheme
+    if not header:
         orig_url = ''.join(('http://', orig_url))
+
+    if not is_valid(orig_url):
+        return render_template('index.html')
 
     new_url = transform()
     store_url(orig_url, new_url, g.db)
-    # print(url_dict)
     return new_url
 
 if __name__ == '__main__':
