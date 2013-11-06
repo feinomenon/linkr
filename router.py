@@ -45,16 +45,17 @@ def transform(length=10):
     return ''.join(random.choice('abcdefghijklmnopqrstuvwxyz')
         for _ in range(length))
 
-def is_valid(url):
+def validate(url):
+    error = None
     try:
         urlopen(url)
-        return True
     except URLError, e:
         if hasattr(e, 'reason'):
-            print("Failed to reach a server:", e.reason)
+            error = "Error: Failed to reach a server:"
         elif hasattr(e, 'code'):
-            print("Error code:", e.code)
-        return False
+            error = " ".join(("Error code:", e.code))
+
+    return error
 
 @app.route('/')
 def home():
@@ -73,12 +74,13 @@ def process_form():
     if not header:
         orig_url = ''.join(('http://', orig_url))
 
-    if not is_valid(orig_url):
-        return render_template('index.html')
-
-    new_url = transform()
-    store_url(orig_url, new_url, g.db)
-    return new_url
+    error = validate(orig_url)
+    if error:
+        return render_template('index.html', error=error)
+    else:
+        new_url = transform()
+        store_url(orig_url, new_url, g.db)
+        return new_url
 
 if __name__ == '__main__':
     init_db()

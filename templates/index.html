@@ -8,6 +8,10 @@
     <p>URL to shorten:</p>
     <input type="text" name="url"></input>
     <input type="submit" value="Submit"></input>
+
+    {% if error %}
+    <p class=error>{{ error }}</p>
+    {% endif %}
 </form>
 
 </body>
